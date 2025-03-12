@@ -16,38 +16,48 @@ def create_population():
 def evaluate(chromosome):
     total_val = sum(gene * val for gene, val in zip(chromosome, values))
     total_wt = sum(gene * wt for gene, wt in zip(chromosome, weights))
-    return 0 if total_wt > capacity else total_val
+    return total_val if total_wt <= capacity else total_val * (capacity / total_wt)
 
-def select_mates(population):
-    scores = [evaluate(chromo) for chromo in population]
-    total_score = sum(scores)
+def repair_chromosome(chromosome):
+    while sum(gene * wt for gene, wt in zip(chromosome, weights)) > capacity:
+        ones_indices = [i for i, gene in enumerate(chromosome) if gene == 1]
+        if not ones_indices:
+            break
+        worst_idx = min(ones_indices, key=lambda i: values[i] / weights[i])
+        chromosome[worst_idx] = 0
+    return chromosome
+
+def tournament_selection(population, k=3):
     selected = []
     while len(selected) < pop_size:
-        idx = random.choices(range(len(population)), weights=scores)[0]
-        selected.append(population[idx])
+        tournament = random.sample(population, k)
+        winner = max(tournament, key=evaluate)
+        selected.append(winner)
     return selected
 
-def crossover(parent1, parent2):
-    point = random.randint(1, len(parent1) - 1)
-    return parent1[:point] + parent2[point:], parent2[:point] + parent1[point:]
+def two_point_crossover(parent1, parent2):
+    point1, point2 = sorted(random.sample(range(len(parent1)), 2))
+    child1 = parent1[:point1] + parent2[point1:point2] + parent1[point2:]
+    child2 = parent2[:point1] + parent1[point1:point2] + parent2[point2:]
+    return repair_chromosome(child1), repair_chromosome(child2)
 
-def mutate(chromosome):
-    idx = random.randint(0, len(chromosome) - 1)
-    chromosome[idx] = 1 - chromosome[idx]
+def swap_mutation(chromosome):
+    idx1, idx2 = random.sample(range(len(chromosome)), 2)
+    chromosome[idx1], chromosome[idx2] = chromosome[idx2], chromosome[idx1]
 
 def apply_mutations(population):
     for chromo in population:
         if random.random() < mutation_prob:
-            mutate(chromo)
+            swap_mutation(chromo)
 
 def genetic_algo():
     population = create_population()
     for _ in range(num_generations):
-        parents = select_mates(population)
+        parents = tournament_selection(population)
         offspring = []
         for i in range(0, len(parents), 2):
             if i + 1 < len(parents):
-                child1, child2 = crossover(parents[i], parents[i + 1])
+                child1, child2 = two_point_crossover(parents[i], parents[i + 1])
                 offspring.extend([child1, child2])
         apply_mutations(offspring)
         population = offspring
