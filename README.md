@@ -1,2 +1,2 @@
 # AI-Lab9
-GA Example for Knapsack 
+Lab Assignment on GA Example for Knapsack 
